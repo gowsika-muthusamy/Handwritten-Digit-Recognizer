@@ -1,0 +1,37 @@
+from flask import Flask, render_template, request
+import numpy as np
+from tensorflow.keras.models import load_model
+from PIL import Image, ImageOps
+import os
+
+app = Flask(__name__)
+model = load_model('digit_recognition/model/digit_model.h5')
+
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+@app.route('/predict', methods=['POST'])
+def predict():
+    if 'file' not in request.files:
+        return "No file uploaded", 400
+    
+    file = request.files['file']
+    
+    if file.filename == '':
+        return "No selected file", 400
+    
+    image = Image.open(file).convert('L')  # Convert to grayscale
+    image = ImageOps.invert(image)         # Invert colors (MNIST style)
+    image = image.resize((28, 28))
+    image = np.array(image)
+    image = image / 255.0
+    image = image.reshape(1, 28, 28, 1)
+
+    prediction = model.predict(image)
+    digit = np.argmax(prediction)
+
+    return render_template('result.html', digit=digit)
+
+if __name__ == '__main__':
+    app.run(debug=True)
